@@ -19,6 +19,7 @@ type AppConfig = {
 
 type FakeProviderConfig = {
   enabledUsers: AdimAccount[];
+  offline?: boolean;
 };
 
 interface AuthProvider {
@@ -52,19 +53,32 @@ export function configureAdminApp(config?: AppConfig): AdminApp {
   };
 }
 
-export async function onUserSignInUseCase(
+export function onUserSignInUseCase(
   app: AdminApp,
   authProvider: AuthProvider,
   crendentials: Credentials
 ) {
-  try {
-    const user = await authProvider.signInWithCredentials(crendentials);
+  return authProvider
+    .signInWithCredentials(crendentials)
+    .then(onfulfilled, onrejected);
+
+  function onfulfilled(user: AdminUser) {
     app.setUser(user);
-  } catch (error) {
-    // handle potential errors
-    app.setWarningMessage(
-      "You do not have permission to enter the application. Check your email and password."
-    );
+    return "ok";
+  }
+
+  function onrejected(reason: AuthError | ConecctionError) {
+    if (reason.message === "auth/credentials are invalid") {
+      app.setWarningMessage(
+        "You do not have permission to enter the application. Check your email and password."
+      );
+    }
+    if (reason.message === "connection/server is offline") {
+      app.setWarningMessage(
+        "Something went wrong with the connection. Please try again in a few minutes."
+      );
+    }
+    return "fail";
   }
 }
 
@@ -76,7 +90,7 @@ export function selectWarningMessage(app: AdminApp): string | null {
 }
 
 export function fakeAuthProvider(config: FakeProviderConfig): AuthProvider {
-  const { enabledUsers } = config;
+  const { enabledUsers, offline = false } = config;
 
   function findAccountByEmail(email: string) {
     return enabledUsers.find((user) => email === user.email);
@@ -94,16 +108,23 @@ export function fakeAuthProvider(config: FakeProviderConfig): AuthProvider {
       };
       return validUser;
     }
-    throw new AuthError("auth/credentials are invalid");
+    throw new Error("bad credentials");
   }
 
-  async function signInWithCredentials(credentials: Credentials) {
-    try {
-      const validAccount = getValidUser(credentials);
-      return Promise.resolve(validAccount);
-    } catch (error) {
-      return Promise.reject({ message: "auth/credentials are invalid" });
-    }
+  function signInWithCredentials(credentials: Credentials) {
+    return new Promise<AdminUser>((resolve, reject) => {
+      if (offline) {
+        reject(new ConecctionError("connection/server is offline"));
+      }
+      try {
+        const validUser = getValidUser(credentials);
+        resolve(validUser);
+      } catch (error) {
+        if (error instanceof Error && error.message === "bad credentials") {
+          reject(new AuthError("auth/credentials are invalid"));
+        }
+      }
+    });
   }
 
   return {
@@ -112,6 +133,11 @@ export function fakeAuthProvider(config: FakeProviderConfig): AuthProvider {
 }
 
 class AuthError extends Error {
+  constructor(message: string) {
+    super(message);
+  }
+}
+class ConecctionError extends Error {
   constructor(message: string) {
     super(message);
   }

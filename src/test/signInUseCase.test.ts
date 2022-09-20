@@ -33,7 +33,7 @@ describe("Sign In Use Case", () => {
     password: "blablebli",
   };
 
-  it("Should logged-in a user that already exist in the list of enabled users", async () => {
+  it("should logged-in a user that already exist in the list of enabled users", async () => {
     // given an auth provider that already has a user enabled
     const authProvider = fakeAuthProvider({
       enabledUsers,
@@ -58,7 +58,7 @@ describe("Sign In Use Case", () => {
     expect(adminUser).to.deep.equal(expectedAdminUser);
   });
 
-  it("Should inform the user that he/she does not have permission to log in", async () => {
+  it("should inform the user that he/she does not have permission to log in", async () => {
     // given an auth provider that already has a user enabled
     const authProvider = fakeAuthProvider({
       enabledUsers,
@@ -74,6 +74,31 @@ describe("Sign In Use Case", () => {
 
     // use case
     await onUserSignInUseCase(adminApp, authProvider, invalidCredentials);
+
+    const adminUser = selectAdimnUser(adminApp);
+    const warningMessage = selectWarningMessage(adminApp);
+
+    expect(adminUser).to.deep.equal(expectedAdminUser);
+    expect(warningMessage).to.equal(expectedMessage);
+  });
+
+  it("should inform the user that something has gona wrong with the connection", async () => {
+    // given an auth provider that is offline
+    const authProvider = fakeAuthProvider({
+      enabledUsers,
+      offline: true,
+    });
+
+    // given an admin-app without a logged-in user
+    const adminApp = configureAdminApp();
+
+    // expected result
+    const expectedAdminUser = null;
+    const expectedMessage =
+      "Something went wrong with the connection. Please try again in a few minutes.";
+
+    // use case
+    await onUserSignInUseCase(adminApp, authProvider, validCredentetials);
 
     const adminUser = selectAdimnUser(adminApp);
     const warningMessage = selectWarningMessage(adminApp);
