@@ -40,7 +40,7 @@ describe("Sign In Use Case", () => {
     });
 
     // given an admin-app without a logged-in user
-    const adminApp = configureAdminApp();
+    const adminApp = configureAdminApp({ authProvider });
 
     // expected result
     const expectedAdminUser = {
@@ -65,7 +65,7 @@ describe("Sign In Use Case", () => {
     });
 
     // given an admin-app without a logged-in user
-    const adminApp = configureAdminApp();
+    const adminApp = configureAdminApp({ authProvider });
 
     // expected result
     const expectedAdminUser = null;
@@ -90,7 +90,7 @@ describe("Sign In Use Case", () => {
     });
 
     // given an admin-app without a logged-in user
-    const adminApp = configureAdminApp();
+    const adminApp = configureAdminApp({ authProvider });
 
     // expected result
     const expectedAdminUser = null;
@@ -105,5 +105,28 @@ describe("Sign In Use Case", () => {
 
     expect(adminUser).to.deep.equal(expectedAdminUser);
     expect(warningMessage).to.equal(expectedMessage);
+  });
+
+  it("should resume the session where it left off last time", () => {
+    // given an auth provider that holds a user logged on
+    const authProvider = fakeAuthProvider({
+      enabledUsers,
+      hasLoggedInUser: validCredentetials,
+    });
+
+    // given the admin-app starts
+    const adminApp = configureAdminApp({ authProvider });
+
+    // expected result
+    const expectedAdminUser = {
+      uid: enabledUsers[0].uid,
+      email: enabledUsers[0].email,
+      username: enabledUsers[0].username,
+      photoUrl: enabledUsers[0].photoUrl,
+    };
+
+    const adminUser = selectAdimnUser(adminApp);
+
+    expect(adminUser).to.deep.equal(expectedAdminUser);
   });
 });
