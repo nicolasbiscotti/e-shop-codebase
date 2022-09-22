@@ -19,17 +19,21 @@ type AppConfig = {
 type FakeProviderConfig = {
   enabledUsers: AdimAccount[];
   offline?: boolean;
-  hasLoggedInUser?: Credentials;
+  hasLoggedUser?: Credentials;
 };
 
 interface AuthProvider {
   signInWithCredentials: (credentials: Credentials) => Promise<AdminUser>;
-  getLoggedInUser: () => AdminUser | null;
+  onLoggedUserChange: (
+    listener: (user: AdminUser | null) => void
+  ) => () => void;
 }
 
 interface AdminApp {
   setUser: (user: AdminUser) => void;
   setWarningMessage: (message: string) => void;
+  onUserChange: (listener: (user: AdminUser | null) => void) => () => void;
+  onMessageChange: (listener: (message: string | null) => void) => () => void;
   getState: () => AppState;
 }
 
@@ -38,14 +42,31 @@ export function configureAdminApp(config: AppConfig): AdminApp {
   const initialState = { user: null, warningMessage: null };
   const state: AppState = initialState;
 
-  setUser(authProvider.getLoggedInUser());
+  const unsuscribe = authProvider.onLoggedUserChange(setUser);
+
+  const userListeners: Set<(user: AdminUser | null) => void> = new Set();
+  const messageListeners: Set<(message: string | null) => void> = new Set();
+
+  function onUserChange(listener: (user: AdminUser | null) => void) {
+    userListeners.add(listener);
+    listener(state.user);
+    return () => userListeners.delete(listener);
+  }
+
+  function onMessageChange(listener: (message: string | null) => void) {
+    messageListeners.add(listener);
+    listener(state.warningMessage);
+    return () => messageListeners.delete(listener);
+  }
 
   function setUser(user: AdminUser | null) {
     state.user = user;
+    userListeners?.forEach((listener) => listener(state.user));
   }
 
-  function setWarningMessage(message: string) {
+  function setWarningMessage(message: string | null) {
     state.warningMessage = message;
+    messageListeners?.forEach((listener) => listener(state.warningMessage));
   }
 
   const getState = () => ({ ...state });
@@ -53,6 +74,8 @@ export function configureAdminApp(config: AppConfig): AdminApp {
   return {
     setUser,
     setWarningMessage,
+    onUserChange,
+    onMessageChange,
     getState,
   };
 }
@@ -72,8 +95,7 @@ export function onUserSignInUseCase(
     .signInWithCredentials(crendentials)
     .then(onfulfilled, onrejected);
 
-  function onfulfilled(user: AdminUser) {
-    app.setUser(user);
+  function onfulfilled() {
     return "ok";
   }
 
@@ -96,19 +118,25 @@ export function selectWarningMessage(app: AdminApp): string | null {
 }
 
 export function fakeAuthProvider(config: FakeProviderConfig): AuthProvider {
-  const { enabledUsers, offline = false, hasLoggedInUser = null } = config;
+  const { enabledUsers, offline = false, hasLoggedUser } = config;
 
-  let loggedInUser: AdminUser | null = null;
+  let loggedUser: AdminUser | null = null;
 
-  if (hasLoggedInUser) {
-    setLoggedInUser(getValidUser(hasLoggedInUser));
+  if (hasLoggedUser) {
+    setLoggedUser(getValidUser(hasLoggedUser));
   }
 
-  function setLoggedInUser(user: AdminUser | null) {
-    loggedInUser = user;
+  const loggedUserListeners: Set<(user: AdminUser | null) => void> = new Set();
+
+  function onLoggedUserChange(listener: (user: AdminUser | null) => void) {
+    loggedUserListeners.add(listener);
+    listener(loggedUser);
+    return () => loggedUserListeners.delete(listener);
   }
-  function getLoggedInUser() {
-    return loggedInUser;
+
+  function setLoggedUser(user: AdminUser | null) {
+    loggedUser = user;
+    loggedUserListeners?.forEach((listener) => listener(loggedUser));
   }
 
   function findAccountByEmail(email: string) {
@@ -134,13 +162,15 @@ export function fakeAuthProvider(config: FakeProviderConfig): AuthProvider {
     return new Promise<AdminUser>((resolve, reject) => {
       if (offline) {
         reject(new ConnectionError(ConnectionMessages.OFFLINE_SERVER));
-      }
-      try {
-        const validUser = getValidUser(credentials);
-        resolve(validUser);
-      } catch (error) {
-        if (error instanceof Error && error.message === "bad credentials") {
-          reject(new AuthError(AuthMessages.INVALID_CREDENTIALS));
+      } else {
+        try {
+          const validUser = getValidUser(credentials);
+          setLoggedUser(validUser);
+          resolve(validUser);
+        } catch (error) {
+          if (error instanceof Error && error.message === "bad credentials") {
+            reject(new AuthError(AuthMessages.INVALID_CREDENTIALS));
+          }
         }
       }
     });
@@ -148,7 +178,7 @@ export function fakeAuthProvider(config: FakeProviderConfig): AuthProvider {
 
   return {
     signInWithCredentials,
-    getLoggedInUser,
+    onLoggedUserChange,
   };
 }
 

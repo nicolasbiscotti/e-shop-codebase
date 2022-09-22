@@ -111,7 +111,7 @@ describe("Sign In Use Case", () => {
     // given an auth provider that holds a user logged on
     const authProvider = fakeAuthProvider({
       enabledUsers,
-      hasLoggedInUser: validCredentetials,
+      hasLoggedUser: validCredentetials,
     });
 
     // given the admin-app starts
