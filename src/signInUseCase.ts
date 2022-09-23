@@ -42,31 +42,31 @@ export function configureAdminApp(config: AppConfig): AdminApp {
   const initialState = { user: null, warningMessage: null };
   const state: AppState = initialState;
 
-  const unsuscribe = authProvider.onLoggedUserChange(setUser);
-
   const userListeners: Set<(user: AdminUser | null) => void> = new Set();
   const messageListeners: Set<(message: string | null) => void> = new Set();
 
+  const unsuscribe = authProvider.onLoggedUserChange(setUser);
+
   function onUserChange(listener: (user: AdminUser | null) => void) {
     userListeners.add(listener);
-    listener(state.user);
+    // listener(state.user);
     return () => userListeners.delete(listener);
   }
 
   function onMessageChange(listener: (message: string | null) => void) {
     messageListeners.add(listener);
-    listener(state.warningMessage);
+    // listener(state.warningMessage);
     return () => messageListeners.delete(listener);
   }
 
   function setUser(user: AdminUser | null) {
     state.user = user;
-    userListeners?.forEach((listener) => listener(state.user));
+    userListeners.forEach((listener) => listener(state.user));
   }
 
   function setWarningMessage(message: string | null) {
     state.warningMessage = message;
-    messageListeners?.forEach((listener) => listener(state.warningMessage));
+    messageListeners.forEach((listener) => listener(state.warningMessage));
   }
 
   const getState = () => ({ ...state });

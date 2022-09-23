@@ -33,7 +33,7 @@ describe("Sign In Use Case", () => {
     password: "blablebli",
   };
 
-  it("should logged-in a user that already exist in the list of enabled users", async () => {
+  it("should logged-in a user that already exist in the list of enabled users", () => {
     // given an auth provider that already has a user enabled
     const authProvider = fakeAuthProvider({
       enabledUsers,
@@ -51,14 +51,14 @@ describe("Sign In Use Case", () => {
     };
 
     // use case
-    await onUserSignInUseCase(adminApp, authProvider, validCredentetials);
+    onUserSignInUseCase(adminApp, authProvider, validCredentetials);
 
-    const adminUser = selectAdimnUser(adminApp);
-
-    expect(adminUser).to.deep.equal(expectedAdminUser);
+    adminApp.onUserChange((adminUser) => {
+      expect(adminUser).to.deep.equal(expectedAdminUser);
+    });
   });
 
-  it("should inform the user that he/she does not have permission to log in", async () => {
+  it("should inform the user that he/she does not have permission to log in", () => {
     // given an auth provider that already has a user enabled
     const authProvider = fakeAuthProvider({
       enabledUsers,
@@ -73,13 +73,14 @@ describe("Sign In Use Case", () => {
       "You do not have permission to enter the application. Check your email and password.";
 
     // use case
-    await onUserSignInUseCase(adminApp, authProvider, invalidCredentials);
+    onUserSignInUseCase(adminApp, authProvider, invalidCredentials);
 
-    const adminUser = selectAdimnUser(adminApp);
-    const warningMessage = selectWarningMessage(adminApp);
+    adminApp.onMessageChange((warningMessage) => {
+      const adminUser = selectAdimnUser(adminApp);
 
-    expect(adminUser).to.deep.equal(expectedAdminUser);
-    expect(warningMessage).to.equal(expectedMessage);
+      expect(adminUser).to.deep.equal(expectedAdminUser);
+      expect(warningMessage).to.equal(expectedMessage);
+    });
   });
 
   it("should inform the user that something has gona wrong with the connection", async () => {
