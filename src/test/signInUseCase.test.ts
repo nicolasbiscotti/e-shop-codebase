@@ -1,27 +1,36 @@
 import { expect } from "chai";
-import {
-  configureAdminApp,
-  fakeAuthProvider,
-  onUserSignInUseCase,
-  selectAdimnUser,
-  selectWarningMessage,
-} from "../signInUseCase";
+import { fakeAuthProvider } from "../infra/fakeAuthProvider";
+import { configureAdminApp } from "../core/configureAdminApp";
+import { selectAdimnUser, selectWarningMessage } from "../core/selectors";
+import { onUserSignInUseCase } from "../core/usecases/signInUseCase";
 
 describe("Sign In Use Case", () => {
   const enabledUsers = [
     {
-      uid: "rt4-5eiug-uyt5",
-      email: "leoquiroga@gmail.com",
-      username: "Leo Quiroga",
-      password: "leo2022",
-      photoUrl: "https://potho-leo.io",
+      user: {
+        uid: "rt4-5eiug-uyt5",
+        email: "leoquiroga@gmail.com",
+        username: "Leo Quiroga",
+        photoUrl: "https://potho-leo.io",
+      },
+      credentials: {
+        email: "leoquiroga@gmail.com",
+        password: "leo2022",
+      },
+      id: "Oi6-kjG76-mA9",
     },
     {
-      uid: "n98-poh7t-98u",
-      username: "Vasco Indaburu",
-      email: "indabumotorstore@gmail.com",
-      password: "store2022",
-      photoUrl: "https://potho-vasco.io",
+      user: {
+        uid: "n98-poh7t-98u",
+        username: "Vasco Indaburu",
+        email: "indabumotorstore@gmail.com",
+        photoUrl: "https://potho-vasco.io",
+      },
+      credentials: {
+        email: "indabumotorstore@gmail.com",
+        password: "store2022",
+      },
+      id: "We4-08Yuh65-ñl34",
     },
   ];
   const validCredentetials = {
@@ -43,12 +52,7 @@ describe("Sign In Use Case", () => {
     const adminApp = configureAdminApp({ authProvider });
 
     // expected result
-    const expectedAdminUser = {
-      uid: enabledUsers[0].uid,
-      email: enabledUsers[0].email,
-      username: enabledUsers[0].username,
-      photoUrl: enabledUsers[0].photoUrl,
-    };
+    const expectedAdminUser = enabledUsers[0].user;
 
     // use case
     onUserSignInUseCase(adminApp, authProvider, validCredentetials);
@@ -119,12 +123,7 @@ describe("Sign In Use Case", () => {
     const adminApp = configureAdminApp({ authProvider });
 
     // expected result
-    const expectedAdminUser = {
-      uid: enabledUsers[0].uid,
-      email: enabledUsers[0].email,
-      username: enabledUsers[0].username,
-      photoUrl: enabledUsers[0].photoUrl,
-    };
+    const expectedAdminUser = enabledUsers[0].user;
 
     const adminUser = selectAdimnUser(adminApp);
 
